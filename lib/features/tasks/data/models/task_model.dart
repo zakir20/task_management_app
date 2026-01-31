@@ -13,18 +13,33 @@ class TaskModel {
 
   factory TaskModel.fromJson(Map<String, dynamic> json) {
     return TaskModel(
-      id: json['id'],
-      todo: json['todo'],
-      completed: json['completed'],
-      userId: json['userId'],
+      id: json['id'] ?? 0,
+      todo: json['todo'] ?? '',
+      completed: json['completed'] ?? false,
+      userId: json['userId'] ?? 0,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
+      'id': id,          
       'todo': todo,
       'completed': completed,
       'userId': userId,
     };
+  }
+
+  TaskModel copyWith({
+    int? id,
+    String? todo,
+    bool? completed,
+    int? userId,
+  }) {
+    return TaskModel(
+      id: id ?? this.id,
+      todo: todo ?? this.todo,
+      completed: completed ?? this.completed,
+      userId: userId ?? this.userId,
+    );
   }
 }

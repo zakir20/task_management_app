@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gap/gap.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:go_router/go_router.dart';
+
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/app_logger.dart'; 
+import '../../task_routes.dart';
 import '../bloc/task_cubit.dart';
 import '../bloc/task_state.dart';
-import '../../task_routes.dart';
 import '../widgets/task_loading_shimmer.dart'; 
+import 'package:task_management_app/injection/injection_container.dart';
+
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
@@ -18,21 +22,32 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _activeTabIndex = 0; 
+  late TaskCubit _cubit;
 
   @override
   void initState() {
     super.initState();
-    context.read<TaskCubit>().getTasks();
+    _cubit = TaskCubit(taskRepository: sl());
+    
+    logger.i("Dashboard Initialized: Fetching tasks...");
+    _cubit.getTasks();
+  }
+
+  @override
+  void dispose() {
+    logger.w("Disposing Dashboard Cubit");
+    _cubit.close();
+    super.dispose();
   }
 
   String _getDynamicTime(int index) {
-    int hour = 9 + (index ~/ 2); 
+    int hour = 9 + (index ~/ 2);
     String period = hour >= 12 ? "PM" : "AM";
     int displayHour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
-    
+
     List<String> mins = [":00", ":15", ":30", ":45"];
     String min = mins[index % 4];
-    
+
     return "$displayHour$min $period";
   }
 
@@ -61,7 +76,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.primary,
         shape: const CircleBorder(),
-        onPressed: () => context.push(TaskRoutes.addTask),
+        onPressed: () {
+          logger.d("Navigating to Add Task Screen");
+          context.push(TaskRoutes.addTask, extra: _cubit);
+        },
         child: const Icon(Icons.add, color: Colors.white, size: 30),
       ),
     );
@@ -81,7 +99,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Text("Hello!", style: GoogleFonts.poppins(color: AppColors.textGrey, fontSize: 14)),
             Text("Livia Vaccaro", style: GoogleFonts.poppins(color: AppColors.textBlack, fontSize: 18, fontWeight: FontWeight.bold)),
           ],
-        )
+        ),
       ],
     );
   }
@@ -90,7 +108,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Today's tasks", style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textBlack)),
+        Text(
+          "today's tasks",
+          style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textBlack),
+        ),
         const Gap(15),
         SizedBox(
           height: 90,
@@ -99,14 +120,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
             itemCount: 7,
             itemBuilder: (context, index) {
               DateTime date = DateTime.now().add(Duration(days: index - 2));
-              bool isSelected = index == 2; 
+              bool isSelected = index == 2;
               return Container(
                 width: 65,
                 margin: const EdgeInsets.only(right: 12),
                 decoration: BoxDecoration(
                   color: isSelected ? AppColors.primary : Colors.white,
                   borderRadius: BorderRadius.circular(15),
-                  boxShadow: isSelected ? [BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 5))] : [],
+                  boxShadow: isSelected
+                      ? [BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 5))]
+                      : [],
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -136,7 +159,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           return GestureDetector(
             onTap: () {
               setState(() => _activeTabIndex = index);
-              context.read<TaskCubit>().filterTasks(tabs[index]);
+              logger.i("Filter Changed: ${tabs[index]}");
+              _cubit.filterTasks(tabs[index]);
             },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -165,12 +189,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildTaskList() {
     return BlocBuilder<TaskCubit, TaskState>(
+      bloc: _cubit,
       builder: (context, state) {
         if (state is TaskLoading) {
           return const TaskLoadingShimmer();
         }
 
         if (state is TaskError) {
+          logger.e("State Error: ${state.message}");
           return Center(child: Text(state.message));
         }
 
@@ -186,52 +212,59 @@ class _DashboardScreenState extends State<DashboardScreen> {
               final task = state.tasks[index];
               final String dynamicTime = _getDynamicTime(index);
 
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: Colors.white, 
-                  borderRadius: BorderRadius.circular(20)
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text("ID: ${task.id}", style: GoogleFonts.poppins(color: AppColors.textGrey, fontSize: 11)),
-                          Text(
-                            task.todo, 
-                            maxLines: 1, 
-                            overflow: TextOverflow.ellipsis, 
-                            style: GoogleFonts.poppins(color: AppColors.textBlack, fontWeight: FontWeight.bold, fontSize: 15)
-                          ),
-                          Row(
-                            children: [
-                              const Icon(Icons.access_time, size: 14, color: AppColors.primary),
-                              const Gap(5),
-                              Text(dynamicTime, style: GoogleFonts.poppins(color: AppColors.textGrey, fontSize: 12)),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: task.completed ? AppColors.doneGreen.withOpacity(0.1) : AppColors.todoPurple.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        task.completed ? "Done" : "To-do",
-                        style: GoogleFonts.poppins(
-                          color: task.completed ? AppColors.doneGreen : AppColors.todoPurple, 
-                          fontSize: 11, 
-                          fontWeight: FontWeight.bold
+              return GestureDetector(
+                onTap: () {
+                  logger.d("Toggling Status for Task ID: ${task.id}");
+                  
+                },
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("ID: ${task.id}", style: GoogleFonts.poppins(color: AppColors.textGrey, fontSize: 11)),
+                            Text(
+                              task.todo,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.poppins(color: AppColors.textBlack, fontWeight: FontWeight.bold, fontSize: 15),
+                            ),
+                            const Gap(5),
+                            Row(
+                              children: [
+                                const Icon(Icons.access_time, size: 14, color: AppColors.primary),
+                                const Gap(5),
+                                Text(dynamicTime, style: GoogleFonts.poppins(color: AppColors.textGrey, fontSize: 12)),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                  ],
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: task.completed ? AppColors.doneGreen.withOpacity(0.1) : AppColors.todoPurple.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          task.completed ? "Done" : "To-do",
+                          style: GoogleFonts.poppins(
+                            color: task.completed ? AppColors.doneGreen : AppColors.todoPurple,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },

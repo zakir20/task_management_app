@@ -1,7 +1,9 @@
 import 'package:go_router/go_router.dart';
-import 'presentation/screens/welcome_screen.dart';
-import 'presentation/screens/dashboard_screen.dart';
+import 'package:task_management_app/features/tasks/presentation/bloc/task_cubit.dart';
+
 import 'presentation/screens/add_task_screen.dart';
+import 'presentation/screens/dashboard_screen.dart';
+import 'presentation/screens/welcome_screen.dart';
 
 class TaskRoutes {
   static const String welcome = '/';
@@ -22,7 +24,10 @@ class TaskRoutes {
     GoRoute(
       path: addTask,
       name: addTask,
-      builder: (context, state) => const AddTaskScreen(),
+      builder: (context, state) {
+        final cubit = state.extra as TaskCubit;
+        return AddTaskScreen(cubit: cubit);
+      },
     ),
   ];
 }

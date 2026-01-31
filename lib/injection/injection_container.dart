@@ -1,17 +1,23 @@
-import 'package:get_it/get_it.dart';
 import 'package:dio/dio.dart';
-import '../features/tasks/data/repository/task_repository.dart';
-import '../features/tasks/presentation/bloc/task_cubit.dart';
+import 'package:get_it/get_it.dart';
+import 'package:task_management_app/core/network/dio_client.dart';
+import 'package:task_management_app/core/network/network_executor.dart';
+import 'package:task_management_app/features/tasks/data/repository/task_repository.dart';
+import 'package:task_management_app/features/tasks/presentation/bloc/task_cubit.dart';
 
 final sl = GetIt.instance;
 
 Future<void> init() async {
-  // External
+  // 1. External
   sl.registerLazySingleton(() => Dio());
 
-  // Repository
-  sl.registerLazySingleton(() => TaskRepository(dio: sl()));
+  // 2. Core Network
+  sl.registerLazySingleton(() => DioClient(sl()));
+  sl.registerLazySingleton(() => NetworkExecutor(sl<DioClient>().dio));
 
-  // Bloc/Cubit
+  // 3. Repository
+  sl.registerLazySingleton(() => TaskRepository(executor: sl()));
+
+  // 4. Cubit
   sl.registerFactory(() => TaskCubit(taskRepository: sl()));
 }
