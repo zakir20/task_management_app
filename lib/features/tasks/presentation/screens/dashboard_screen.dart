@@ -8,7 +8,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../bloc/task_cubit.dart';
 import '../bloc/task_state.dart';
 import '../../task_routes.dart';
-
+import '../widgets/task_loading_shimmer.dart'; 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
@@ -17,13 +17,14 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  int _activeTabIndex = 0; 
+
   @override
   void initState() {
     super.initState();
     context.read<TaskCubit>().getTasks();
   }
 
- 
   String _getDynamicTime(int index) {
     int hour = 9 + (index ~/ 2); 
     String period = hour >= 12 ? "PM" : "AM";
@@ -131,18 +132,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
         scrollDirection: Axis.horizontal,
         itemCount: tabs.length,
         itemBuilder: (context, index) {
-          bool isSelected = index == 0;
-          return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            margin: const EdgeInsets.only(right: 10),
-            decoration: BoxDecoration(
-              color: isSelected ? AppColors.primary : Colors.white,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Center(
-              child: Text(
-                tabs[index],
-                style: GoogleFonts.poppins(color: isSelected ? Colors.white : AppColors.textGrey, fontSize: 13, fontWeight: FontWeight.w500),
+          bool isSelected = _activeTabIndex == index;
+          return GestureDetector(
+            onTap: () {
+              setState(() => _activeTabIndex = index);
+              context.read<TaskCubit>().filterTasks(tabs[index]);
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              margin: const EdgeInsets.only(right: 10),
+              decoration: BoxDecoration(
+                color: isSelected ? AppColors.primary : Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: isSelected ? AppColors.primary : Colors.grey.shade200),
+              ),
+              child: Center(
+                child: Text(
+                  tabs[index],
+                  style: GoogleFonts.poppins(
+                    color: isSelected ? Colors.white : AppColors.textGrey, 
+                    fontSize: 13, 
+                    fontWeight: FontWeight.w500
+                  ),
+                ),
               ),
             ),
           );
@@ -154,10 +166,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildTaskList() {
     return BlocBuilder<TaskCubit, TaskState>(
       builder: (context, state) {
-        if (state is TaskLoading) return const Center(child: CircularProgressIndicator());
-        if (state is TaskError) return Center(child: Text(state.message));
+        if (state is TaskLoading) {
+          return const TaskLoadingShimmer();
+        }
+
+        if (state is TaskError) {
+          return Center(child: Text(state.message));
+        }
 
         if (state is TaskLoaded) {
+          if (state.tasks.isEmpty) {
+            return const Center(child: Text("No tasks available"));
+          }
+
           return ListView.builder(
             physics: const BouncingScrollPhysics(),
             itemCount: state.tasks.length,
@@ -168,7 +189,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               return Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+                decoration: BoxDecoration(
+                  color: Colors.white, 
+                  borderRadius: BorderRadius.circular(20)
+                ),
                 child: Row(
                   children: [
                     Expanded(
@@ -176,7 +200,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text("ID: ${task.id}", style: GoogleFonts.poppins(color: AppColors.textGrey, fontSize: 11)),
-                          Text(task.todo, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.poppins(color: AppColors.textBlack, fontWeight: FontWeight.bold, fontSize: 15)),
+                          Text(
+                            task.todo, 
+                            maxLines: 1, 
+                            overflow: TextOverflow.ellipsis, 
+                            style: GoogleFonts.poppins(color: AppColors.textBlack, fontWeight: FontWeight.bold, fontSize: 15)
+                          ),
                           Row(
                             children: [
                               const Icon(Icons.access_time, size: 14, color: AppColors.primary),
@@ -195,7 +224,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       child: Text(
                         task.completed ? "Done" : "To-do",
-                        style: GoogleFonts.poppins(color: task.completed ? AppColors.doneGreen : AppColors.todoPurple, fontSize: 11, fontWeight: FontWeight.bold),
+                        style: GoogleFonts.poppins(
+                          color: task.completed ? AppColors.doneGreen : AppColors.todoPurple, 
+                          fontSize: 11, 
+                          fontWeight: FontWeight.bold
+                        ),
                       ),
                     ),
                   ],
@@ -204,7 +237,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             },
           );
         }
-        return const Center(child: Text("No tasks available"));
+        return const SizedBox.shrink();
       },
     );
   }
