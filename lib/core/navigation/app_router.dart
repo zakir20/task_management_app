@@ -17,4 +17,12 @@ class AppRouter {
       body: Center(child: Text('No route defined for ${state.uri}')),
     ),
   );
+
+  static Future<T?> push<T extends Object?>(
+    BuildContext context,
+    String path, {
+    Object? extra,
+  }) {
+    return context.push<T>(path, extra: extra);
+  }
 }

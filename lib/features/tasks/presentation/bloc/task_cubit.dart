@@ -1,58 +1,34 @@
-import 'dart:convert'; 
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:shared_preferences/shared_preferences.dart'; 
-import '../../../../core/utils/app_logger.dart'; 
 import '../../data/repository/task_repository.dart';
 import '../../data/models/task_model.dart';
 import 'task_state.dart';
 
 class TaskCubit extends Cubit<TaskState> {
   final TaskRepository taskRepository;
-
   TaskCubit({required this.taskRepository}) : super(TaskInitial());
 
+  static const List<String> categories = ["All", "To do", "In Progress", "Completed"];
+
   List<TaskModel> _allTasks = [];
-  String currentFilter = "All"; 
+  String currentFilter = "All";
 
   Future<void> getTasks() async {
     emit(TaskLoading());
     try {
-      logger.i("Attempting to load tasks...");
+      _allTasks = await taskRepository.getLocalTasks();
 
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
-      final String? savedData = prefs.getString('persistent_tasks');
-
-      if (savedData != null) {
-        logger.d("Local data found. Loading tasks from phone memory.");
-        final List decodedList = jsonDecode(savedData);
-        _allTasks = decodedList.map((e) => TaskModel.fromJson(e)).toList();
-      } else {
-        logger.i("No local data found. Fetching from API...");
-        _allTasks = await taskRepository.fetchTasks();
-        
-        await _saveTasksToLocal(); 
+      if (_allTasks.isEmpty) {
+        _allTasks = await taskRepository.fetchRemoteTasks();
+        await taskRepository.saveTasksToLocal(_allTasks);
       }
 
       filterTasks(currentFilter);
     } catch (e) {
-      logger.e("Error in getTasks: $e");
       emit(TaskError(e.toString()));
     }
   }
 
-  Future<void> _saveTasksToLocal() async {
-    try {
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
-      final String encodedData = jsonEncode(_allTasks.map((t) => t.toJson()).toList());
-      await prefs.setString('persistent_tasks', encodedData);
-      logger.v("Tasks successfully saved to local storage.");
-    } catch (e) {
-      logger.e("Failed to save tasks locally: $e");
-    }
-  }
-
   void filterTasks(String category) {
-    logger.i("Filter changed to: $category");
     currentFilter = category;
     List<TaskModel> filteredList = [];
 
@@ -66,21 +42,16 @@ class TaskCubit extends Cubit<TaskState> {
       filteredList = _allTasks.where((task) => task.completed).toList();
     }
 
-    emit(TaskLoaded(List.from(filteredList)));
+    emit(TaskLoaded(tasks: List.from(filteredList), selectedCategory: category));
   }
 
   Future<void> addNewTask(String taskName) async {
     try {
-      logger.i("Adding new task: $taskName");
       final newTask = await taskRepository.createTask(taskName);
-      
       _allTasks.insert(0, newTask);
-      
-      await _saveTasksToLocal();
-
+      await taskRepository.saveTasksToLocal(_allTasks);
       filterTasks(currentFilter);
     } catch (e) {
-      logger.e("Critical error adding task: $e");
       emit(const TaskError("Failed to add task"));
     }
   }
