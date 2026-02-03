@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-
 import 'core/navigation/app_router.dart';
-import 'core/theme/app_colors.dart';
+import 'core/theme/app_theme.dart'; 
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -11,11 +10,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp.router(
       title: 'Task Management App',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        scaffoldBackgroundColor: AppColors.scaffoldBg,
-        useMaterial3: true,
-        primaryColor: AppColors.primary,
-      ),
+      theme: AppTheme.lightTheme,
       routerConfig: AppRouter.router,
     );
   }
