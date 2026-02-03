@@ -25,4 +25,12 @@ class AppRouter {
   }) {
     return context.push<T>(path, extra: extra);
   }
+
+  static void go(
+    BuildContext context,
+    String path, {
+    Object? extra,
+  }) {
+    context.go(path, extra: extra);
+  }
 }

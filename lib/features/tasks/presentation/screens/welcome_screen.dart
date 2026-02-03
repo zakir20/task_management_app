@@ -4,7 +4,8 @@ import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/utils/app_logger.dart'; 
+import '../../../../core/navigation/app_router.dart';
+import '../../../../core/utils/assets_utils.dart'; 
 import '../../../../injection/injection_container.dart';
 import '../../data/repository/onboard_repository.dart';
 import '../../task_routes.dart';
@@ -29,15 +30,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     final isFirstTime = await onboardRepo.isFirstTime();
 
     if (!isFirstTime) {
-      logger.d("WelcomeScreen: Onboarding already seen. Skipping...");
-      if (mounted) context.go(TaskRoutes.dashboard);
+      if (mounted) AppRouter.go(context, TaskRoutes.dashboard);
     }
   }
 
   void _onLetsStartClicked(BuildContext context) async {
     await sl<OnboardRepository>().setOnboardingComplete();
-    logger.v("WelcomeScreen: Navigating to Dashboard.");
-    if (context.mounted) context.go(TaskRoutes.dashboard);
+    if (context.mounted) AppRouter.go(context, TaskRoutes.dashboard);
   }
 
   @override
@@ -54,7 +53,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 flex: 3,
                 child: Center(
                   child: SvgPicture.asset(
-                    'assets/images/welcome.svg',
+                    AssetsUtils.welcomeImage, 
                     fit: BoxFit.contain,
                     width: MediaQuery.of(context).size.width * 0.8,
                   ),

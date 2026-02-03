@@ -8,10 +8,6 @@ class OnboardRepository {
     logger.i("OnboardRepo: Checking onboarding status...");
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final bool isFirst = prefs.getBool(_onboardKey) ?? true;
-    
-    if (!isFirst) {
-      logger.d("OnboardRepo: User has already seen onboarding.");
-    }
     return isFirst;
   }
 
@@ -19,6 +15,5 @@ class OnboardRepository {
     logger.i("OnboardRepo: Marking onboarding as complete...");
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_onboardKey, false);
-    logger.v("OnboardRepo: Onboarding flag saved to disk.");
   }
 }
